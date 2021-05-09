@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -12,6 +13,7 @@ import java.nio.FloatBuffer;
 
 import me.dawn.learnopengl.LEGLSurfaceView;
 import me.dawn.learnopengl.R;
+import me.dawn.learnopengl.fbo.FBORenderer;
 
 /**
  * @author : LeeZhaoXing
@@ -33,12 +35,14 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     /**
      * 纹理坐标，注：每个点的位置与顶点坐标系一一对应
+     * note:使用FBO后，改成FBO纹理坐标系
      */
     private float[] fragmentArray = {
-            0f, 1f,
-            1f, 1f,
             0f, 0f,
-            1f, 0f
+            1f, 0f,
+            0f, 1f,
+            1f, 1f
+
     };
     private FloatBuffer fbVertex;
     private FloatBuffer fbFragment;
@@ -48,9 +52,13 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private int mTextureId;
     private int sampler;
     private int vboId;
+    private int fboId;
+    private int imgTextureId;
+    private FBORenderer mFBORenderer;
 
     public LTextureRenderer(Context context) {
         mContext = context;
+        mFBORenderer = new FBORenderer(context);
         allocateMemory();
     }
 
@@ -70,21 +78,14 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onSurfaceCreated() {
-
+        mFBORenderer.onCreate();
         initProgram();
-
-        getArrtribAndUniform();
-
+        getAttribAndUniform();
         initVBO();
-
+        initFBO();
         initTexture();
-
-    }
-
-    private void getArrtribAndUniform() {
-        mVPosition = GLES20.glGetAttribLocation(mProgram, "v_Position");
-        mFPosition = GLES20.glGetAttribLocation(mProgram, "f_Position");
-        sampler = GLES20.glGetUniformLocation(mProgram, "sTexture");
+        setupFBO();
+        imgTextureId = loadTexrute(R.mipmap.ava);
     }
 
     /**
@@ -94,6 +95,40 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.vertex_shader);
         String fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader);
         mProgram = ShaderUtil.createProgram(vertexSource, fragmentSource);
+    }
+
+    private void getAttribAndUniform() {
+        mVPosition = GLES20.glGetAttribLocation(mProgram, "v_Position");
+        mFPosition = GLES20.glGetAttribLocation(mProgram, "f_Position");
+        sampler = GLES20.glGetUniformLocation(mProgram, "sTexture");
+    }
+
+    /**
+     * 初始化VBO
+     */
+    private void initVBO() {
+        //创建VBO
+        int[] vbos = new int[1];
+        GLES20.glGenBuffers(1, vbos, 0);
+        vboId = vbos[0];
+
+        //绑定VBO
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
+        //分配VBO需要缓存的大小
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4 + fragmentArray.length * 4,
+                null, GLES20.GL_STATIC_DRAW);
+        //设置顶点数据的值
+        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, 0, vertexArray.length * 4, fbVertex);
+        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4, fragmentArray.length * 4, fbFragment);
+        //解绑VBO
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+    }
+
+    private void initFBO() {
+        int[] fbos = new int[1];
+        GLES20.glGenBuffers(1, fbos, 0);
+        fboId = fbos[0];
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
     }
 
     /**
@@ -119,50 +154,79 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         //设置过滤方式
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+    }
 
-        Bitmap bitmap = BitmapFactory.decodeResource(mContext.getResources(), R.mipmap.ava);
-        //设置图片
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-        bitmap.recycle();
+
+    private void setupFBO() {
+        //设置fbo分配内存大小
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1080, 2210, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        //mTextureId绑定到fbo
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, mTextureId, 0);
+        //检查fbo是否绑定成功
+        if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.e("@@", "FBO绑定失败");
+        } else {
+            Log.d("@@", "FBO绑定成功");
+        }
         //解绑纹理
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        //解绑fbo
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
     }
 
     /**
-     * 初始化VBO
+     * 获取需要绘制的图片纹理，然后绘制渲染
+     *
+     * @param redId
+     * @return
      */
-    private void initVBO() {
-        //创建VBO
-        int[] vbos = new int[1];
-        GLES20.glGenBuffers(1, vbos, 0);
-        vboId = vbos[0];
+    private int loadTexrute(int redId) {
+        int[] textureIds = new int[1];
+        GLES20.glGenTextures(1, textureIds, 0);
 
-        //绑定VBO
-        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
-        //分配VBO需要缓存的大小
-        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4 + fragmentArray.length * 4,
-                null, GLES20.GL_STATIC_DRAW);
-        //设置顶点数据的值
-        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, 0, vertexArray.length * 4, fbVertex);
-        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4, fragmentArray.length * 4, fbFragment);
-        //解绑VBO
-        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        //绑定纹理
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds[0]);
+
+        /* //激活纹理单元unit0
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        //通过glUniform1i的设置，我们保证每个uniform采样器对应着正确的纹理单元
+        GLES20.glUniform1i(sampler, 0);*/
+
+        //设置环绕方式
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+
+        //设置过滤方式
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+        Bitmap bitmap = BitmapFactory.decodeResource(mContext.getResources(), redId);
+        //设置图片
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+
+        //解绑纹理
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+
+        return textureIds[0];
     }
 
     @Override
     public void onSurfaceChanged(int width, int height) {
         GLES20.glViewport(0, 0, width, height);
+        mFBORenderer.onChange(width, height);
     }
 
     @Override
     public void onDrawFrame() {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
         //清屏
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glClearColor(1.0f, 0f, 0f, 0f);
 
         //使用源程序
         GLES20.glUseProgram(mProgram);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId);
+        //使用fbo，将mTextureId改成imgTextureId, 进行离屏渲染
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, imgTextureId);
         //绑定VBO
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
 
@@ -181,5 +245,9 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         //解绑VBO
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        //解绑fbo，切换到窗口模式
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        //拿到后的mTextureId，在窗口上绘制
+        mFBORenderer.onDraw(mTextureId);
     }
 }
