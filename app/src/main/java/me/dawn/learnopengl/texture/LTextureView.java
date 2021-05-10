@@ -15,8 +15,19 @@ public class LTextureView extends LEGLSurfaceView {
         this(context, null);
     }
 
+    private LTextureRenderer mLTextureRenderer;
+
     public LTextureView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setLRenderer(new LTextureRenderer(context));
+        mLTextureRenderer = new LTextureRenderer(context);
+
+        setLRenderer(mLTextureRenderer);
+    }
+
+    public void onConfigurationChanged(int orientation) {
+        if (mLTextureRenderer != null) {
+            mLTextureRenderer.setOrientation(orientation);
+        }
+
     }
 }

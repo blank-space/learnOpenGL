@@ -3,9 +3,13 @@ package me.dawn.learnopengl.texture;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.opengl.Matrix;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.WindowManager;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -14,6 +18,9 @@ import java.nio.FloatBuffer;
 import me.dawn.learnopengl.LEGLSurfaceView;
 import me.dawn.learnopengl.R;
 import me.dawn.learnopengl.fbo.FBORenderer;
+
+import static android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+import static android.content.res.Configuration.ORIENTATION_PORTRAIT;
 
 /**
  * @author : LeeZhaoXing
@@ -54,7 +61,15 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private int vboId;
     private int fboId;
     private int imgTextureId;
-    private FBORenderer mFBORenderer;
+    private final FBORenderer mFBORenderer;
+    private int umatrix;
+    private float[] matrix = new float[16];
+    private int orientation=ORIENTATION_PORTRAIT;
+
+
+    public void setOrientation(int orientation) {
+        this.orientation = orientation;
+    }
 
     public LTextureRenderer(Context context) {
         mContext = context;
@@ -76,8 +91,28 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     }
 
+    /**
+     * 获得屏幕高度
+     *
+     * @return
+     */
+    public int getScreenHeight() {
+        WindowManager wm = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(outMetrics);
+        return outMetrics.heightPixels;
+    }
+
+    public int getScreenWidth() {
+        WindowManager wm = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(outMetrics);
+        return outMetrics.widthPixels;
+    }
+
     @Override
     public void onSurfaceCreated() {
+        Log.d("@@","onSurfaceCreated()");
         mFBORenderer.onCreate();
         initProgram();
         getAttribAndUniform();
@@ -85,14 +120,14 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         initFBO();
         initTexture();
         setupFBO();
-        imgTextureId = loadTexrute(R.mipmap.ava);
+        imgTextureId = loadTexrute(R.drawable.androids);
     }
 
     /**
      * 创建渲染程序
      */
     private void initProgram() {
-        String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.vertex_shader);
+        String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.matrix_vertex_shader);
         String fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader);
         mProgram = ShaderUtil.createProgram(vertexSource, fragmentSource);
     }
@@ -101,6 +136,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         mVPosition = GLES20.glGetAttribLocation(mProgram, "v_Position");
         mFPosition = GLES20.glGetAttribLocation(mProgram, "f_Position");
         sampler = GLES20.glGetUniformLocation(mProgram, "sTexture");
+        umatrix = GLES20.glGetUniformLocation(mProgram, "u_Matrix");
     }
 
     /**
@@ -159,7 +195,11 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     private void setupFBO() {
         //设置fbo分配内存大小
-        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1080, 2210, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        if (orientation == ORIENTATION_PORTRAIT) {
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1080, 2210, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        } else {
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 2210, 1080, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        }
         //mTextureId绑定到fbo
         GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, mTextureId, 0);
         //检查fbo是否绑定成功
@@ -212,12 +252,27 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onSurfaceChanged(int width, int height) {
+        Log.d("@@","onSurfaceChanged()");
         GLES20.glViewport(0, 0, width, height);
         mFBORenderer.onChange(width, height);
+        //1024 1820
+       /* if (width > height) {
+            Matrix.orthoM(matrix, 0, -width / ((height / 1820f) * 1024f), width / ((height / 1820f) * 1024f), -1f, 1f, -1f, 1f);
+        } else {
+            Matrix.orthoM(matrix, 0, -1, 1, -height / ((width / 1024f) * 1820f), height / ((width /  1024f) * 1820f), -1f, 1f);
+        }*/
+
+        if (width > height) {
+            Matrix.orthoM(matrix, 0, -width / ((height / 702f) * 526f), width / ((height / 702f) * 526f), -1f, 1f, -1f, 1f);
+        } else {
+            Matrix.orthoM(matrix, 0, -1, 1, -height / ((width / 526f) * 702f), height / ((width / 526f) * 702f), -1f, 1f);
+        }
+
     }
 
     @Override
     public void onDrawFrame() {
+        Log.d("@@","onDrawFrame()");
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
         //清屏
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -225,6 +280,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
         //使用源程序
         GLES20.glUseProgram(mProgram);
+        GLES20.glUniformMatrix4fv(umatrix, 1, false, matrix, 0);
         //使用fbo，将mTextureId改成imgTextureId, 进行离屏渲染
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, imgTextureId);
         //绑定VBO
