@@ -45,10 +45,10 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
      * note:使用FBO后，改成FBO纹理坐标系
      */
     private float[] fragmentArray = {
-            0f, 0f,
-            1f, 0f,
             0f, 1f,
-            1f, 1f
+            1f, 1f,
+            0f, 0f,
+            1f, 0f
 
     };
     private FloatBuffer fbVertex;
@@ -64,7 +64,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private final FBORenderer mFBORenderer;
     private int umatrix;
     private float[] matrix = new float[16];
-    private int orientation=ORIENTATION_PORTRAIT;
+    private int orientation = ORIENTATION_PORTRAIT;
 
 
     public void setOrientation(int orientation) {
@@ -112,7 +112,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onSurfaceCreated() {
-        Log.d("@@","onSurfaceCreated()");
+        Log.d("@@", "onSurfaceCreated()");
         mFBORenderer.onCreate();
         initProgram();
         getAttribAndUniform();
@@ -252,7 +252,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onSurfaceChanged(int width, int height) {
-        Log.d("@@","onSurfaceChanged()");
+        Log.d("@@", "onSurfaceChanged()");
         GLES20.glViewport(0, 0, width, height);
         mFBORenderer.onChange(width, height);
         //1024 1820
@@ -268,11 +268,14 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
             Matrix.orthoM(matrix, 0, -1, 1, -height / ((width / 526f) * 702f), height / ((width / 526f) * 702f), -1f, 1f);
         }
 
+        //沿着x轴逆时针旋转180
+        Matrix.rotateM(matrix, 0, 180, 1, 0, 0);
+
     }
 
     @Override
     public void onDrawFrame() {
-        Log.d("@@","onDrawFrame()");
+        Log.d("@@", "onDrawFrame()");
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
         //清屏
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
