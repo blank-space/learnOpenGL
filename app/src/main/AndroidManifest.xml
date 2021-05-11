@@ -12,6 +12,10 @@
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboardHidden|screenSize|orientation">
+
+        </activity>
+
+        <activity android:name=".MultiMainActivity" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

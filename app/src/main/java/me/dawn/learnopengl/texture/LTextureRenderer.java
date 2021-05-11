@@ -65,6 +65,8 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private int umatrix;
     private float[] matrix = new float[16];
     private int orientation = ORIENTATION_PORTRAIT;
+    private int width;
+    private int height;
 
 
     public void setOrientation(int orientation) {
@@ -90,6 +92,7 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         fbVertex.position(0);
 
     }
+
 
     /**
      * 获得屏幕高度
@@ -121,6 +124,9 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         initTexture();
         setupFBO();
         imgTextureId = loadTexrute(R.drawable.androids);
+        if(mOnRenderCreateListener!=null){
+            mOnRenderCreateListener.onCreate(mTextureId);
+        }
     }
 
     /**
@@ -252,9 +258,9 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onSurfaceChanged(int width, int height) {
-        Log.d("@@", "onSurfaceChanged()");
-        GLES20.glViewport(0, 0, width, height);
-        mFBORenderer.onChange(width, height);
+        this.width = width;
+        this.height = height;
+
         //1024 1820
        /* if (width > height) {
             Matrix.orthoM(matrix, 0, -width / ((height / 1820f) * 1024f), width / ((height / 1820f) * 1024f), -1f, 1f, -1f, 1f);
@@ -275,6 +281,9 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onDrawFrame() {
+        GLES20.glViewport(0, 0,1080, 2210);
+       // mFBORenderer.onChange(width, height);
+
         Log.d("@@", "onDrawFrame()");
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
         //清屏
@@ -304,9 +313,23 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         //解绑VBO
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+
+        GLES20.glViewport(0, 0, width, height);
+
         //解绑fbo，切换到窗口模式
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
         //拿到后的mTextureId，在窗口上绘制
         mFBORenderer.onDraw(mTextureId);
+    }
+
+    private  OnRenderCreateListener mOnRenderCreateListener;
+
+    public void setOnRenderCreateListener(OnRenderCreateListener onRenderCreateListener) {
+        mOnRenderCreateListener = onRenderCreateListener;
+    }
+
+    public interface OnRenderCreateListener
+    {
+        void onCreate(int textureId);
     }
 }

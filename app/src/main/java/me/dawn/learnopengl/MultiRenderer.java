@@ -1,4 +1,4 @@
-package me.dawn.learnopengl.fbo;
+package me.dawn.learnopengl;
 
 import android.content.Context;
 import android.opengl.GLES20;
@@ -7,15 +7,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import me.dawn.learnopengl.R;
 import me.dawn.learnopengl.texture.ShaderUtil;
 
 /**
  * @author : LeeZhaoXing
- * @date : 2021/5/9
+ * @date : 2021/5/11
  * @desc :
  */
-public class FBORenderer {
+public class MultiRenderer implements LEGLSurfaceView.LGLRender {
     private Context mContext;
     /**
      * 顶点着色器的坐标
@@ -41,11 +40,18 @@ public class FBORenderer {
     private int program;
     private int mVPosition;
     private int mFPosition;
+    private int mTextureId;
     private int sampler;
     private int vboId;
+    private int index;
 
 
-    public FBORenderer(Context context) {
+    public void setTextureId(int textureId, int index) {
+        this.mTextureId = textureId;
+        this.index = index;
+    }
+
+    public MultiRenderer(Context context) {
         mContext = context;
         allocateMemory();
     }
@@ -64,13 +70,54 @@ public class FBORenderer {
 
     }
 
-    public void onDraw(int textureId) {
+    @Override
+    public void onSurfaceCreated() {
+        String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.vertex_shader);
+        String fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader);
+        if(index == 0)
+        {
+            fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader1);
+        }
+        else if(index == 1)
+        {
+            fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader2);
+        }
+        else if(index == 2)
+        {
+            fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader3);
+        }
+
+        program = ShaderUtil.createProgram(vertexSource, fragmentSource);
+
+        mVPosition = GLES20.glGetAttribLocation(program, "v_Position");
+        mFPosition = GLES20.glGetAttribLocation(program, "f_Position");
+        sampler = GLES20.glGetUniformLocation(program, "sTexture");
+
+        int[] vbos = new int[1];
+        GLES20.glGenBuffers(1, vbos, 0);
+        vboId = vbos[0];
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4 + fragmentArray.length * 4, null, GLES20.GL_STATIC_DRAW);
+        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, 0, vertexArray.length * 4, fbVertex);
+        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4, fragmentArray.length * 4, fbFragment);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+    }
+
+
+    @Override
+    public void onSurfaceChanged(int width, int height) {
+        GLES20.glViewport(0, 0, width, height);
+    }
+
+    @Override
+    public void onDrawFrame() {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glClearColor(1f,0f, 0f, 1f);
 
         GLES20.glUseProgram(program);
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId);
 
 
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
@@ -89,28 +136,4 @@ public class FBORenderer {
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
     }
 
-    public void onChange(int width,int height) {
-        GLES20.glViewport(0, 0, width, height);
-    }
-
-    public void onCreate() {
-        String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.vertex_shader);
-        String fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader);
-
-        program = ShaderUtil.createProgram(vertexSource, fragmentSource);
-
-        mVPosition = GLES20.glGetAttribLocation(program, "v_Position");
-        mFPosition = GLES20.glGetAttribLocation(program, "f_Position");
-        sampler = GLES20.glGetUniformLocation(program, "sTexture");
-
-        int [] vbos = new int[1];
-        GLES20.glGenBuffers(1, vbos, 0);
-        vboId = vbos[0];
-
-        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
-        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4 + fragmentArray.length * 4, null, GLES20. GL_STATIC_DRAW);
-        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, 0, vertexArray.length * 4, fbVertex);
-        GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, vertexArray.length * 4, fragmentArray.length * 4, fbFragment);
-        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
-    }
 }

@@ -30,4 +30,11 @@ public class LTextureView extends LEGLSurfaceView {
         }
 
     }
+
+    public int getTextureId(){
+        if (mLTextureRenderer != null) {
+            return mLTextureRenderer.getTextureId();
+        }
+        return 0;
+    }
 }
