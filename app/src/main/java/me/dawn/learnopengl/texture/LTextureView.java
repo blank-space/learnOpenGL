@@ -16,11 +16,11 @@ public class LTextureView extends LEGLSurfaceView {
     }
 
     private LTextureRenderer mLTextureRenderer;
+    private int mTextureId;
 
     public LTextureView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mLTextureRenderer = new LTextureRenderer(context);
-
         setLRenderer(mLTextureRenderer);
     }
 
@@ -31,10 +31,11 @@ public class LTextureView extends LEGLSurfaceView {
 
     }
 
-    public int getTextureId(){
-        if (mLTextureRenderer != null) {
-            return mLTextureRenderer.getTextureId();
-        }
-        return 0;
+    public LTextureRenderer getmLTextureRenderer(){
+        return mLTextureRenderer;
+    }
+
+    public int getTextureId() {
+        return mTextureId;
     }
 }

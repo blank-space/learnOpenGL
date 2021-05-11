@@ -74,16 +74,11 @@ public class MultiRenderer implements LEGLSurfaceView.LGLRender {
     public void onSurfaceCreated() {
         String vertexSource = ShaderUtil.getRawResource(mContext, R.raw.vertex_shader);
         String fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader);
-        if(index == 0)
-        {
+        if (index == 0) {
             fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader1);
-        }
-        else if(index == 1)
-        {
+        } else if (index == 1) {
             fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader2);
-        }
-        else if(index == 2)
-        {
+        } else if (index == 2) {
             fragmentSource = ShaderUtil.getRawResource(mContext, R.raw.fragment_shader3);
         }
 
@@ -113,7 +108,7 @@ public class MultiRenderer implements LEGLSurfaceView.LGLRender {
     @Override
     public void onDrawFrame() {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-        GLES20.glClearColor(1f,0f, 0f, 1f);
+        GLES20.glClearColor(1f, 0f, 0f, 1f);
 
         GLES20.glUseProgram(program);
 
