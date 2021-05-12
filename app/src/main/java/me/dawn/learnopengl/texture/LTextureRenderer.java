@@ -37,7 +37,12 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
             -1f, -1f,
             1f, -1f,
             -1f, 1f,
-            1f, 1f
+            1f, 1f,
+
+            -0.5f, -0.5f,
+            0.5f, -0.5f,
+            -0.5f, 0.5f,
+            0.5f, 0.5f
     };
 
     /**
@@ -60,7 +65,14 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private int sampler;
     private int vboId;
     private int fboId;
+    /**
+     * 第一张图片
+     */
     private int imgTextureId;
+    /**
+     * 第二张图片
+     */
+    private int imgTextureId2;
     private final FBORenderer mFBORenderer;
     private int umatrix;
     private float[] matrix = new float[16];
@@ -94,25 +106,6 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     }
 
 
-    /**
-     * 获得屏幕高度
-     *
-     * @return
-     */
-    public int getScreenHeight() {
-        WindowManager wm = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
-        DisplayMetrics outMetrics = new DisplayMetrics();
-        wm.getDefaultDisplay().getMetrics(outMetrics);
-        return outMetrics.heightPixels;
-    }
-
-    public int getScreenWidth() {
-        WindowManager wm = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
-        DisplayMetrics outMetrics = new DisplayMetrics();
-        wm.getDefaultDisplay().getMetrics(outMetrics);
-        return outMetrics.widthPixels;
-    }
-
     @Override
     public void onSurfaceCreated() {
         Log.d("@@", "onSurfaceCreated()");
@@ -124,7 +117,8 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         initTexture();
         setupFBO();
         imgTextureId = loadTexrute(R.drawable.androids);
-        if(mOnRenderCreateListener!=null){
+        imgTextureId2 = loadTexrute(R.mipmap.ava);
+        if (mOnRenderCreateListener != null) {
             mOnRenderCreateListener.onCreate(mTextureId);
         }
     }
@@ -202,9 +196,9 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
     private void setupFBO() {
         //设置fbo分配内存大小
         if (orientation == ORIENTATION_PORTRAIT) {
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1080, 2210, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1080, 1920, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
         } else {
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 2210, 1080, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1920, 1080, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
         }
         //mTextureId绑定到fbo
         GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, mTextureId, 0);
@@ -281,8 +275,8 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
 
     @Override
     public void onDrawFrame() {
-        GLES20.glViewport(0, 0,1080, 2210);
-       // mFBORenderer.onChange(width, height);
+        GLES20.glViewport(0, 0, 1080, 2210);
+        // mFBORenderer.onChange(width, height);
 
         Log.d("@@", "onDrawFrame()");
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId);
@@ -293,11 +287,11 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         //使用源程序
         GLES20.glUseProgram(mProgram);
         GLES20.glUniformMatrix4fv(umatrix, 1, false, matrix, 0);
+
         //使用fbo，将mTextureId改成imgTextureId, 进行离屏渲染
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, imgTextureId);
         //绑定VBO
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
-
         //使顶点属性数组有效
         GLES20.glEnableVertexAttribArray(mVPosition);
         //为顶点属性赋值，使用VBO缓存后，mVPosition的offset从0开始
@@ -306,9 +300,25 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         GLES20.glEnableVertexAttribArray(mFPosition);
         //为顶点属性赋值，，mFPosition的offset从vertexArray.length*4开始
         GLES20.glVertexAttribPointer(mFPosition, 2, GLES20.GL_FLOAT, false, 8, vertexArray.length * 4);
-
         //绘制图形
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+        //绘制第二张图
+        //使用fbo，将mTextureId改成imgTextureId, 进行离屏渲染
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, imgTextureId2);
+        //绑定VBO
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId);
+        //使顶点属性数组有效
+        GLES20.glEnableVertexAttribArray(mVPosition);
+        //为顶点属性赋值，使用VBO缓存后，mVPosition的offset从0开始
+        GLES20.glVertexAttribPointer(mVPosition, 2, GLES20.GL_FLOAT, false, 8, 32);
+        //使顶点属性数组有效
+        GLES20.glEnableVertexAttribArray(mFPosition);
+        //为顶点属性赋值，，mFPosition的offset从vertexArray.length*4开始
+        GLES20.glVertexAttribPointer(mFPosition, 2, GLES20.GL_FLOAT, false, 8, vertexArray.length * 4);
+        //绘制图形
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
         //解绑纹理
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         //解绑VBO
@@ -322,14 +332,13 @@ public class LTextureRenderer implements LEGLSurfaceView.LGLRender {
         mFBORenderer.onDraw(mTextureId);
     }
 
-    private  OnRenderCreateListener mOnRenderCreateListener;
+    private OnRenderCreateListener mOnRenderCreateListener;
 
     public void setOnRenderCreateListener(OnRenderCreateListener onRenderCreateListener) {
         mOnRenderCreateListener = onRenderCreateListener;
     }
 
-    public interface OnRenderCreateListener
-    {
+    public interface OnRenderCreateListener {
         void onCreate(int textureId);
     }
 }

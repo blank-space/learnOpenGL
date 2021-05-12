@@ -3,5 +3,6 @@ varying vec2 ft_Position;
 uniform sampler2D sTexture;
 void main() {
     lowp vec4 textureColor = texture2D(sTexture, ft_Position);
-    gl_FragColor = vec4((textureColor.rgb + vec3(-0.5f)), textureColor.w);
+    float gray = textureColor.r * 0.1125 + textureColor.g * 0.4154 + textureColor.b * 0.0621;
+    gl_FragColor = vec4(gray, gray, gray, textureColor.w);
 }
